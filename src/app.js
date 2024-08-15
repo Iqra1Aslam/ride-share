@@ -13,11 +13,13 @@ app.use(cors(
 
 import { userRouter } from './routes/user.routes.js'
 import { authRouter } from './routes/auth.routes.js'
-import { riderRouter } from './routes/rider.route.js'
+import { driverRouter } from './routes/driver.route.js'
 import {vehicleRouter} from './routes/vehicle.route.js'
+// import { rideRouter } from './routes/ride.route.js'
 
 app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/user', userRouter)
-app.use('/api/v1/rider',riderRouter)
+app.use('/api/v1/driver',driverRouter)
 app.use('/api/v1/vehicle',vehicleRouter)
+// app.use('api/v1/ride',rideRouter)
 export { app }

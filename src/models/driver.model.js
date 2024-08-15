@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 
 const vehicle_schema = new Schema({
-        rider: {
+        driver: {
             type: Schema.Types.ObjectId,
             ref: 'User'
         },
@@ -43,28 +43,37 @@ const vehicle_schema = new Schema({
     timestamps: true
 });
 
-const rider_schema = new Schema({
-        rider: {
+const driver_schema = new Schema({
+        driver: {
             type: Schema.Types.ObjectId, 
             ref: 'User' 
         },
         cnic: {
             type:String
         },
-        rider_lisence_image:{
+        driver_lisence_image:{
             type:String
         },
-        rider_id_confirmation: {
+        driver_id_confirmation: {
             type:String
 
         },
-        is_rider_verified: {
+        currentLocation: { 
+            type: String,
+             required: true 
+            },
+        status: {
+             type: String,
+        // enum: ['available', 'in-ride'],
+        default: 'available'
+     },
+     is_driver_verified: {
             type: Boolean,
             default: false
         }
     
 },{timestamps: true})
 
-// vehicle_schema.index({vehicle_location: '2dsphere' });
+vehicle_schema.index({vehicle_location: '2dsphere' });
 export const Vehicle = model('Vehicle', vehicle_schema);
-export const Rider = model('Rider', rider_schema);
+export const Driver = model('Driver', driver_schema);

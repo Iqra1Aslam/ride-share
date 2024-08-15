@@ -1,6 +1,7 @@
 import { ApiResponse } from '../../utills/ApiResponse.js'
 import { asyncHandler } from '../../utills/asyncHandler.js'
 import { User } from '../../models/user.model.js'
+import { Ride } from '../../models/ride.model.js'
 import Joi from 'joi'
 import { sendMail } from '../../utills/nodeMailer.js'
 import { otpCodeGenerator } from '../../utills/otpGenerator.js'
@@ -96,6 +97,66 @@ export const auth = {
         // send response (200,{},'user is verified')
         return res.status(200).json(new ApiResponse(200, {}, 'user verified'))
     }),
+    
+    // ride request
+    ride_info: asyncHandler(async (req, res) => {
+        // Helper function to parse a 12-hour format string (e.g., "8:00 AM") into a Date object
+        const parseTime = (timeString) => {
+            const [time, modifier] = timeString.split(' ');
+            let [hours, minutes] = time.split(':');
+            if (hours === '12') {
+                hours = '00';
+            }
+            if (modifier === 'PM') {
+                hours = parseInt(hours, 10) + 12;
+            }
+            const date = new Date();
+            date.setHours(hours);
+            date.setMinutes(minutes);
+            date.setSeconds(0);
+            date.setMilliseconds(0);
+            return date;
+        };
+    
+        const user_id = req.user_id;
+        const { pickupLocation, destinationLocation, startTime, endTime } = req.body;
+    
+        // Parse the startTime and endTime from "8:00 AM" format to Date objects
+        const parsedStartTime = startTime.includes('T') ? new Date(startTime) : parseTime(startTime);
+        const parsedEndTime = endTime.includes('T') ? new Date(endTime) : parseTime(endTime);
+    
+        // Create a new ride with the parsed Date objects
+        const newRide = await Ride.create({ 
+            user_id,
+            pickupLocation,
+            destinationLocation,
+            startTime: parsedStartTime,
+            endTime: parsedEndTime,
+            status: 'waiting'
+        });
+    
+        // Helper function to format a Date object into a 12-hour format string
+        const formatTime = (date) => {
+            let hours = date.getHours();
+            const minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // The hour '0' should be '12'
+            return `${hours}:${minutes < 10 ? '0' : ''}${minutes} ${ampm}`;
+        };
+    
+        // Format the startTime and endTime for the response
+        const formattedStartTime = formatTime(newRide.startTime);
+        const formattedEndTime = formatTime(newRide.endTime);
+    
+        // Send response with formatted times
+        return res.status(201).json(new ApiResponse(201, { 
+            ...newRide._doc, 
+            startTime: formattedStartTime, 
+            endTime: formattedEndTime 
+        }, 'Ride request created successfully'));
+    }),
+    
 
     test: (req, res) => {
         res.json({ msg: 'oky' })

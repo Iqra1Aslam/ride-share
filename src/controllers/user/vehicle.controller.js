@@ -3,13 +3,13 @@ import { asyncHandler } from '../../utills/asyncHandler.js'
 import { upload_multiple_on_cloudinary } from "../../utills/cloudinary.js";
 import Joi from 'joi';
 import {Vehicle } from '../../models/driver.model.js';
-import { Rider } from '../../models/driver.model.js';
+import { Driver } from '../../models/driver.model.js';
 
 
 export const vehicle = {
     vehicle_info: asyncHandler(async (req, res) => {
         const { car_type, vehicle_model, vehicle_plate_number, number_of_seats, vehicle_location, vehicle_color } = req.body;
-        const rider = req.user_id;
+        const driver = req.user_id;
         // Validation schema
         const vehicle_validationSchema = Joi.object({
             car_type: Joi.string().required(),
@@ -32,7 +32,7 @@ export const vehicle = {
 
         // Create a new vehicle entry
         const vehicle = new Vehicle({
-            rider,
+            driver,
             car_type,
             vehicle_model,
             vehicle_plate_number,
@@ -79,7 +79,9 @@ export const vehicle = {
         res.status(200).json(new ApiResponse(200, { vehicle }, 'Vehicle verification status updated successfully'));
     }),
     is_nearestVehicle:asyncHandler(async(req,res)=>{
-        const { latitude, longitude } = req.body;
+        // const { latitude, longitude } = req.body;
+        // const nearestVehicles=[]
+
 //         try {
 //           const nearestVehicle = await Vehicle.findOne({
 //             location: {
@@ -104,37 +106,40 @@ export const vehicle = {
       
 // }
 try {
-  const nearestVehicles=await Vehicle.findOne({
-    location: {
-      $near: {
-        $geometry: {
-          type: 'Point',
-          coordinates: [parseFloat(longitude), parseFloat(latitude)]
-        },
-        $maxDistance: parseFloat(1000 )*1609// Adjust max distance as needed
-      }
-    }
-  });
-  //  = await Vehicle.aggregate([
-  //   {
-  //     $geoNear: {
-  //       near: { type: "Point", coordinates: [parseFloat(latitude), parseFloat(longitude)] },
-  //       distanceField: "dist.calculated",
-  //       maxDistance: parseFloat(radius) * 1609.34, // Convert radius from miles to meters
-  //       spherical: true
-  //     }
-  //   }
-  // ]);
+  const { passengerCoordinates } = req.body;
+  const nearestVehicles = [];
 
-  if(!nearestVehicles || nearestVehicles.length === 0)  {
-    return res.status(404).json({ message: 'No vehicles found nearby' });
+  for (const coordinates of passengerCoordinates) {
+    const locations = await Vehicle.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: [parseFloat(coordinates.longitude), parseFloat(coordinates.latitude)]
+          },
+          distanceField: "distance",
+          maxDistance: 5000, // 5km radius
+          spherical: true,
+          key: "vehicle_location" // Specify the field that has the 2dsphere index
+        }
+      }
+    ]);
+    console.log('Found locations:', locations);
+    nearestVehicles.push(locations);
   }
 
+
+  const allEmpty = nearestVehicles.every(array => array.length === 0);
+
+  if (allEmpty) {
+    return res.status(404).json({ message: 'No vehicles found nearby' });
+  }
   res.json(nearestVehicles);
 } catch (err) {
   console.error('Error finding nearest vehicles:', err);
   res.status(500).json({ error: 'Error finding nearest vehicles' });
 }
-}
-    )
+})
+
+    
 }
