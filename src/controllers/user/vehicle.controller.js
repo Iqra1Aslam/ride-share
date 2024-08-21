@@ -4,7 +4,7 @@ import { upload_multiple_on_cloudinary } from "../../utills/cloudinary.js";
 import Joi from 'joi';
 import {Vehicle } from '../../models/driver.model.js';
 import { Driver } from '../../models/driver.model.js';
-
+import { Ride } from '../../models/ride.model.js'
 
 export const vehicle = {
     vehicle_info: asyncHandler(async (req, res) => {
@@ -78,67 +78,121 @@ export const vehicle = {
 
         res.status(200).json(new ApiResponse(200, { vehicle }, 'Vehicle verification status updated successfully'));
     }),
+     publish_ride: asyncHandler(async (req,res)=>{
+    const { pickup_location, dropLocation, time,numSeats, pricePerSeat } = req.body
+    const driverId = req.user_id;
+
+    // Validate the input
+    if (!pickup_location || !dropLocation ||  !time ||  !numSeats || !pricePerSeat) {
+        return res.status(400).json(new ApiResponse(400, 'All fields are required'))
+    }
+    // Create a new ride offer
+    const ride = new publishRide({
+        pickup_location,
+        dropLocation,
+        time,
+        numSeats,
+        pricePerSeat,
+        status: 'waiting',
+        driverId: driverId 
+        
+    });
+     // Check if the ride status is 'waiting'
+if (ride.status !== 'waiting') {
+    return res.status(400).json({ message: 'Ride is already matched or completed' });
+  }
+
+  // Save the ride to the database
+     await ride.save();
+
+    return res.status(201).json(new ApiResponse(201,{ride},'Ride created successfully'))
+    
+}),
     is_nearestVehicle:asyncHandler(async(req,res)=>{
-        // const { latitude, longitude } = req.body;
-        // const nearestVehicles=[]
-
-//         try {
-//           const nearestVehicle = await Vehicle.findOne({
-//             location: {
-//               $near: {
-//                 $geometry: {
-//                   type: 'Point',
-//                   coordinates: [parseFloat(longitude), parseFloat(latitude)]
-//                 },
-//                 $maxDistance: parseFloat(1000 )*1609// Adjust max distance as needed
-//               }
-//             }
-//           });
+     
+        try {
+          const { passengerLocation, requestedTime } = req.body;
       
-//           if (!nearestVehicle) {
-//             return res.status(404).json({ message: 'No vehicles found nearby' });
-//           }
-//           res.json(nearestVehicle);
-//         } catch (err) {
-//           res.status(400).json({ error: 'Error finding nearest vehicle' });
-//         }
-//       })
+          // Convert requestedTime to a Date object
+          const requestedDate = new Date(requestedTime);
       
-// }
-try {
-  const { passengerCoordinates } = req.body;
-  const nearestVehicles = [];
-
-  for (const coordinates of passengerCoordinates) {
-    const locations = await Vehicle.aggregate([
-      {
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: [parseFloat(coordinates.longitude), parseFloat(coordinates.latitude)]
-          },
-          distanceField: "distance",
-          maxDistance: 5000, // 5km radius
-          spherical: true,
-          key: "vehicle_location" // Specify the field that has the 2dsphere index
+          // Calculate the time range: 15 minutes before and after the requested time
+          const timeBefore = new Date(requestedDate);
+          timeBefore.setMinutes(requestedDate.getMinutes() - 15);
+      
+          const timeAfter = new Date(requestedDate);
+          timeAfter.setMinutes(requestedDate.getMinutes() + 15);
+      
+          // Debug logs
+          console.log('Passenger Location:', passengerLocation);
+          console.log('Time Range:', timeBefore, timeAfter);
+      
+          // Find nearby rides within 5km and within the specified time range
+          const nearbyRides = await Ride.aggregate([
+            {
+              $geoNear: {
+                near: {
+                  type: 'Point',
+                  coordinates: [parseFloat(passengerLocation.longitude), parseFloat(passengerLocation.latitude)],
+                },
+                distanceField: 'distance',
+                maxDistance: 5000, // 5km radius
+                spherical: true,
+                key: 'pickup_location', // Geospatial index field
+              },
+            },
+            {
+              $match: {
+                starttime: {
+                  $gte: timeBefore,
+                  $lte: timeAfter,
+                },
+              },
+            },
+          ]);
+      
+          console.log('Nearby Rides:', nearbyRides);
+      
+          if (nearbyRides.length === 0) {
+            return res.status(404).json({ message: 'No rides found nearby' });
+          }
+      
+          res.json(nearbyRides);
+        } catch (err) {
+          console.error('Error finding nearby rides:', err);
+          res.status(500).json({ error: 'Failed to find nearby rides' });
         }
-      }
-    ]);
-    console.log('Found locations:', locations);
-    nearestVehicles.push(locations);
-  }
+      
+      
+}),
+publish_ride: asyncHandler(async (req,res)=>{
+  
 
+  const { pickup_location, dropLocation, date, starttime, endtime, numSeats, pricePerSeat } = req.body;
+const driverId = req.user_id;
 
-  const allEmpty = nearestVehicles.every(array => array.length === 0);
-
-  if (allEmpty) {
-    return res.status(404).json({ message: 'No vehicles found nearby' });
-  }
-  res.json(nearestVehicles);
-} catch (err) {
-  console.error('Error finding nearest vehicles:', err);
-  res.status(500).json({ error: 'Error finding nearest vehicles' });
+// Validate the input
+if (!pickup_location || !dropLocation || !date || !starttime || !endtime || !numSeats || !pricePerSeat) {
+    return res.status(400).json(new ApiResponse(400, 'All fields are required'));
 }
+
+// Create a new ride offer
+const ride = new Ride({
+    pickup_location,
+    dropLocation,
+    date,
+    starttime,
+    endtime,
+    numSeats,
+    pricePerSeat,
+    status: 'waiting',
+    driverId: driverId
+});
+
+// Save the ride to the database
+await ride.save();
+
+return res.status(201).json(new ApiResponse(201, { ride }, 'Ride created successfully'));
 })
 
     
