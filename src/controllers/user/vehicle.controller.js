@@ -109,7 +109,6 @@ if (ride.status !== 'waiting') {
     
 }),
     is_nearestVehicle:asyncHandler(async(req,res)=>{
-     
         try {
           const { passengerLocation, requestedTime } = req.body;
       
@@ -165,35 +164,107 @@ if (ride.status !== 'waiting') {
       
       
 }),
-publish_ride: asyncHandler(async (req,res)=>{
-  
+publish_ride: asyncHandler(async (req, res) => {
 
-  const { pickup_location, dropLocation, date, starttime, endtime, numSeats, pricePerSeat } = req.body;
-const driverId = req.user_id;
+    const { pickup_location, dropLocation, date, starttime, endtime, numSeats, pricePerSeat } = req.body;
+    const driverId = req.user_id;  // Assuming user ID is stored in req.user_id
 
-// Validate the input
-if (!pickup_location || !dropLocation || !date || !starttime || !endtime || !numSeats || !pricePerSeat) {
-    return res.status(400).json(new ApiResponse(400, 'All fields are required'));
-}
+    // Validate the input
+    if (!pickup_location || !dropLocation || !date || !starttime || !endtime || !numSeats || !pricePerSeat) {
+        return res.status(400).json(new ApiResponse(400, 'All fields are required'));
+    }
 
-// Create a new ride offer
-const ride = new Ride({
-    pickup_location,
-    dropLocation,
-    date,
-    starttime,
-    endtime,
-    numSeats,
-    pricePerSeat,
-    status: 'waiting',
-    driverId: driverId
-});
+    // Validate date format (Sat Aug 24 2024)
+    // isNaN(Not a Number)(dateObj.getTime()) expression evaluates to true
+    //  if dateObj.getTime() returns a non-numeric value, which means dateObj is not a valid Date object.
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) {
+        return res.status(400).json(new ApiResponse(400, 'Invalid date format. Use "Sat Aug 24 2024".'));
+    }
+
+    // Validate time format (HH:MM AM/PM)
+    const timeRegex = /^(\d{1,2}:\d{2})(\s?[APap][Mm])?$/;
+    if (!timeRegex.test(starttime) || !timeRegex.test(endtime)) {
+        return res.status(400).json(new ApiResponse(400, 'Invalid time format. Use HH:MM AM/PM.'));
+    }
+
+    // Combine the date and time into Date objects
+    const startTimeString = `${date} ${starttime}`;
+    const endTimeString = `${date} ${endtime}`;
+    const startTimeObj = new Date(startTimeString);
+    const endTimeObj = new Date(endTimeString);
+
+    // Validate the parsed Date objects
+    if (isNaN(startTimeObj.getTime()) || isNaN(endTimeObj.getTime())) {
+        return res.status(400).json(new ApiResponse(400, 'Invalid start or end time.'));
+    }
+
+    // Create a new ride offer
+    const ride = new Ride({
+        pickup_location,
+        dropLocation,
+        date: dateObj,
+        starttime: startTimeObj,
+        endtime: endTimeObj,
+        numSeats,
+        pricePerSeat,
+        status: 'waiting',
+        driverId: driverId
+    });
+
+    // Save the ride to the database
+    await ride.save();
+
+    // Format date and time for the response
+    const formattedDate = dateObj.toDateString(); // Sat Aug 24 2024
+    const formattedStartTime = startTimeObj.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+    });
+    const formattedEndTime = endTimeObj.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+    });
+
+    return res.status(201).json(new ApiResponse(201, {
+        ride: {
+            ...ride.toObject(),
+            date: formattedDate,
+            starttime: formattedStartTime,
+            endtime: formattedEndTime
+        }
+    }, 'Ride created successfully'));
+})
+
+
+//   const { pickup_location, dropLocation, date, starttime, endtime, numSeats, pricePerSeat } = req.body;
+// const driverId = req.user_id;
+
+// // Validate the input
+// if (!pickup_location || !dropLocation || !date || !starttime || !endtime || !numSeats || !pricePerSeat) {
+//     return res.status(400).json(new ApiResponse(400, 'All fields are required'));
+// }
+
+// // Create a new ride offer
+// const ride = new Ride({
+//     pickup_location,
+//     dropLocation,
+//     date,
+//     starttime,
+//     endtime,
+//     numSeats,
+//     pricePerSeat,
+//     status: 'waiting',
+//     driverId: driverId
+// });
 
 // Save the ride to the database
-await ride.save();
+// await ride.save();
 
-return res.status(201).json(new ApiResponse(201, { ride }, 'Ride created successfully'));
-})
+// return res.status(201).json(new ApiResponse(201, { ride }, 'Ride created successfully'));
+
 
     
 }

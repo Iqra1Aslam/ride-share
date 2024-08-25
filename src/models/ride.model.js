@@ -39,18 +39,9 @@ const rideSchema = new Schema({
       coordinates: { type: [Number], required: true }
   
   },
-  date:{
-    type:String,
-    required: true
-  },
-  starttime: {
-    type: Date,
-    required: true
-  },
-  endtime: {
-    type: Date,
-    required: true
-  },
+  date: { type: Date, required: true },
+  starttime: { type: Date, required: true },
+  endtime: { type: Date, required: true },
   numSeats: {
     type: Number,
     required: true,
