@@ -9,4 +9,7 @@ export const  driverRouter = Router()
  driverRouter.route('/driver-verified').patch(auth_middleware.check_user_role(['driver','admin']),driver.driver_is_verified)
  driverRouter.route('/driver-fetch-rides').get(auth_middleware.check_user_role(['passenger','driver','admin']),driver.fetch_ride)
  driverRouter.route('/select-rides').post(auth_middleware.check_user_role(['passenger','driver','admin']),driver.select_ride)
- 
+ driverRouter.post('/driver-details:id', 
+    auth_middleware.check_user_role(['driver', 'admin', 'passenger']), 
+    driver.driver_details_add 
+);

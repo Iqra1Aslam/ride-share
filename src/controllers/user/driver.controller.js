@@ -80,6 +80,63 @@ export const driver = {
   
     return res.status(200).json({ message: 'Ride matched successfully', ride });
   
-  })
+  }),
+  
+    driver_verification: asyncHandler(async (req, res) => {
+        const { is_verified } = req.body;
+        const user_id = req.user_id;
+
+        const driver = await Driver.findOneAndUpdate(
+            { driver: user_id },
+            { is_driver_verified: is_verified },
+            { new: true }
+        );
+
+        if (!driver) {
+            return res.status(404).json(new ApiResponse(404, {}, 'Driver not found.'));
+        }
+
+        res.status(200).json(new ApiResponse(200, { driver }, 'Driver verification status updated successfully'));
+    }),
+    driver_details_add: asyncHandler(async (req, res) => {
+      const user_id = req.user_id;
+      // const user_id = req.params.id.trim();
+      const { name, phone, cnic } = req.body;
+  
+     try{
+          const driver = await Driver.findByIdAndUpdate(
+              user_id,
+              { 
+                  name: name,
+                  phone: phone,
+                  cnic: cnic 
+              },
+              { new: true,upsert: true}
+          );
+        } catch (error) {
+          res.status(500).json({ success: false, message: "Failed to add driver details" });
+      }
+
+        res.status(200).json(new ApiResponse(200, { driver }, 'Driver  status updated successfully'));
+    }),
+
+// Endpoint to update driver's location
+ driver_location :  asyncHandler(async (req, res) => {
+    const { driverId, latitude, longitude } = req.body;
+    const user_id = req.user_id
+    try {
+        await Driver.findByIdAndUpdate(user_id, {
+            location: {
+                type: 'Point',
+                coordinates: [longitude, latitude]
+            }
+        });
+        res.status(200).send({ success: true, message: 'Location updated successfully' });
+    } catch (error) {
+        res.status(500).send({ success: false, message: 'Error updating location', error: error.message });
+    }
+}),
+
 }
+
 
