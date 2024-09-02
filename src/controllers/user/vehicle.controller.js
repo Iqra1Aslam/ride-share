@@ -108,62 +108,68 @@ if (ride.status !== 'waiting') {
     return res.status(201).json(new ApiResponse(201,{ride},'Ride created successfully'))
     
 }),
-    is_nearestVehicle:asyncHandler(async(req,res)=>{
-        try {
-          const { passengerLocation, requestedTime } = req.body;
-      
-          // Convert requestedTime to a Date object
-          const requestedDate = new Date(requestedTime);
-      
-          // Calculate the time range: 15 minutes before and after the requested time
-          const timeBefore = new Date(requestedDate);
-          timeBefore.setMinutes(requestedDate.getMinutes() - 15);
-      
-          const timeAfter = new Date(requestedDate);
-          timeAfter.setMinutes(requestedDate.getMinutes() + 15);
-      
-          // Debug logs
-          console.log('Passenger Location:', passengerLocation);
-          console.log('Time Range:', timeBefore, timeAfter);
-      
-          // Find nearby rides within 5km and within the specified time range
-          const nearbyRides = await Ride.aggregate([
-            {
-              $geoNear: {
-                near: {
-                  type: 'Point',
-                  coordinates: [parseFloat(passengerLocation.longitude), parseFloat(passengerLocation.latitude)],
-                },
-                distanceField: 'distance',
-                maxDistance: 5000, // 5km radius
-                spherical: true,
-                key: 'pickup_location', // Geospatial index field
-              },
-            },
-            {
-              $match: {
-                starttime: {
-                  $gte: timeBefore,
-                  $lte: timeAfter,
-                },
-              },
-            },
-          ]);
-      
-          console.log('Nearby Rides:', nearbyRides);
-      
-          if (nearbyRides.length === 0) {
-            return res.status(404).json({ message: 'No rides found nearby' });
-          }
-      
-          res.json(nearbyRides);
-        } catch (err) {
-          console.error('Error finding nearby rides:', err);
-          res.status(500).json({ error: 'Failed to find nearby rides' });
-        }
-      
-      
-}),
+// is_nearestVehicle: asyncHandler(async (req, res) => {
+//     try {
+//         const { passengerLocation, requestedTime } = req.body;
+
+//         // Get the current date
+//         const currentDate = new Date();
+
+//         // Extract the date part from currentDate
+//         const dateString = currentDate.toDateString(); // e.g., "Sat Aug 24 2024"
+
+//         // Combine the current date with the requested time
+//         const requestedDateString = `${dateString} ${requestedTime}`;
+//         const requestedDate = new Date(requestedDateString);
+
+//         // Calculate the time range: 15 minutes before and after the requested time
+//         const timeBefore = new Date(requestedDate);
+//         timeBefore.setMinutes(requestedDate.getMinutes() - 15);
+
+//         const timeAfter = new Date(requestedDate);
+//         timeAfter.setMinutes(requestedDate.getMinutes() + 15);
+
+//         // Debug logs
+//         console.log('Passenger Location:', passengerLocation);
+//         console.log('Time Range:', timeBefore, timeAfter);
+
+//         // Find nearby rides within 5km and within the specified time range
+//         const nearbyRides = await Ride.aggregate([
+//             {
+//                 $geoNear: {
+//                     near: {
+//                         type: 'Point',
+//                         coordinates: [parseFloat(passengerLocation.longitude), parseFloat(passengerLocation.latitude)],
+//                     },
+//                     distanceField: 'distance',
+//                     maxDistance: 5000, // 5km radius
+//                     spherical: true,
+//                     key: 'pickup_location', // Geospatial index field
+//                 },
+//             },
+//             {
+//                 $match: {
+//                     starttime: {
+//                         $gte: timeBefore,
+//                         $lte: timeAfter,
+//                     },
+//                 },
+//             },
+//         ]);
+
+//         console.log('Nearby Rides:', nearbyRides);
+
+//         if (nearbyRides.length === 0) {
+//             return res.status(404).json({ message: 'No rides found nearby' });
+//         }
+
+//         res.json(nearbyRides);
+//     } catch (err) {
+//         console.error('Error finding nearby rides:', err);
+//         res.status(500).json({ error: 'Failed to find nearby rides' });
+//     }
+// }),
+
 publish_ride: asyncHandler(async (req, res) => {
 
     const { pickup_location, dropLocation, date, starttime, endtime, numSeats, pricePerSeat } = req.body;
@@ -236,7 +242,7 @@ publish_ride: asyncHandler(async (req, res) => {
             endtime: formattedEndTime
         }
     }, 'Ride created successfully'));
-})
+}),
 
 
 //   const { pickup_location, dropLocation, date, starttime, endtime, numSeats, pricePerSeat } = req.body;
@@ -264,7 +270,88 @@ publish_ride: asyncHandler(async (req, res) => {
 // await ride.save();
 
 // return res.status(201).json(new ApiResponse(201, { ride }, 'Ride created successfully'));
-
-
+is_nearestVehicle: asyncHandler(async (req, res) => {
+   
     
-}
+        try {
+            const { passengerLocation, requestedTime } = req.body;
+    
+            // Validate input
+            if (!passengerLocation || !requestedTime) {
+                return res.status(400).json({ message: 'Passenger location and requested time are required.' });
+            }
+    
+            // Get the current date
+            const currentDate = new Date();
+    
+            // Extract the date part from currentDate
+            const dateString = currentDate.toDateString(); // e.g., "Sat Aug 24 2024"
+    
+            // Combine the current date with the requested time
+            const requestedDateString = `${dateString} ${requestedTime}`;
+            const requestedDate = new Date(requestedDateString);
+    
+            // Calculate the time range: 15 minutes before and after the requested time
+            const timeBefore = new Date(requestedDate);
+            timeBefore.setMinutes(requestedDate.getMinutes() - 15);
+    
+            const timeAfter = new Date(requestedDate);
+            timeAfter.setMinutes(requestedDate.getMinutes() + 15);
+    
+            // Format timeBefore and timeAfter to "HH:MM AM/PM"
+            const formattedTimeBefore = timeBefore.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: true,
+            });
+    
+            const formattedTimeAfter = timeAfter.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: true,
+            });
+    
+            // Debug logs
+            console.log('Passenger Location:', passengerLocation);
+            console.log('Requested Time:', requestedTime);
+            console.log('Time Before:', formattedTimeBefore);
+            console.log('Time After:', formattedTimeAfter);
+    
+            // Find nearby rides within 5km and within the specified time range
+            const nearbyRides = await Ride.aggregate([
+                {
+                    $geoNear: {
+                        near: {
+                            type: 'Point',
+                            coordinates: [parseFloat(passengerLocation.longitude), parseFloat(passengerLocation.latitude)],
+                        },
+                        distanceField: 'distance',
+                        maxDistance: 5000, // 5km radius
+                        spherical: true,
+                        key: 'pickup_location', // Geospatial index field
+                    },
+                },
+                {
+                    $match: {
+                        starttime: {
+                            $gte: timeBefore,
+                            $lte: timeAfter,
+                        },
+                    },
+                },
+            ]);
+    
+            console.log('Nearby Rides:', nearbyRides);
+    
+            if (nearbyRides.length === 0) {
+                return res.status(404).json({ message: 'No rides found nearby' });
+            }
+    
+            res.json(nearbyRides);
+        } catch (err) {
+            console.error('Error finding nearby rides:', err);
+            res.status(500).json({ error: 'Failed to find nearby rides' });
+        }
+    })
+    
+    }

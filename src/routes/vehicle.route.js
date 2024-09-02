@@ -22,5 +22,6 @@ vehicleRouter.route('/vehicle_images_upload/:id').patch(auth_middleware.check_us
 
 vehicleRouter.route('/vehicle-verified').patch(auth_middleware.check_user_role(['driver','admin']),vehicle.is_verified)
 //  .route('/license-image-add/:id').patch(upload.single('license-image'), auth_middleware.check_user_role(['passenger','driver','admin']),driver.driver_lisence_image_add)
-vehicleRouter.route('/is-nearestVehicle').patch(auth_middleware.check_user_role(['driver', 'passenger']),vehicle.is_nearestVehicle)
-vehicleRouter.route('/publish-ride').post(auth_middleware.check_user_role(['driver', 'passenger']),vehicle.publish_ride)
+vehicleRouter.route('/is-nearestVehicle').patch(vehicle.is_nearestVehicle)
+vehicleRouter.route('/publish-ride').post
+(vehicle.publish_ride)

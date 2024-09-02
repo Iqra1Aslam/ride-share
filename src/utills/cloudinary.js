@@ -7,20 +7,20 @@ const cloudinary_config=cloudinary.config({
 })
 export const upload_on_cloudinary=async(file)=>{
     try{
-const file_data=await cloudinary.uploader.upload(file)
-.then(info=>{
-    console.log(info.url)
-    return info.url
-})
- 
-    .catch (error=>{
+         const file_data = await cloudinary.uploader.upload(file)
+         .then(info=>{
+            console.log(info.url)
+            return info.url
+         })
+         .catch(error => {
+            console.log(error.message)
+            return error.message
+        })
+    }catch(error){
         console.log(error.message)
-        return error.message
-    })
-}
-    catch (error){
-        console.log(error.message)
-}
+
+    }
+
 }
 export const upload_multiple_on_cloudinary = async (files) => {
     try {
